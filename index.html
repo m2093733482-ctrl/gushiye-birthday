@@ -3,38 +3,464 @@
 <head>
   <meta charset="UTF-8" />
   <title>顾时夜 · 生日夜</title>
+
+  <!-- 移动端适配 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase v8 CDN：先引入 App 和 Firestore（一定要放在自己脚本前面） -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "PingFang SC","Microsoft Yahei",sans-serif;
+      background: #020309;
+      color: #f5f5f5;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 夜空容器 */
+    .sky {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 0;
+      background: #020309;
+    }
+
+    /* 背景图：这里你可以用 bg.jpg 或者直接放 catbox 链接 */
+    .sky::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        url("bg.jpg")
+        center center / cover no-repeat;
+      /* 如果你想用线上图，就把上面那行改成你的 catbox 链接：
+         background: url("https://files.catbox.moe/xxxxxx.jpg") center center / cover no-repeat;
+      */
+      filter: brightness(0.45) blur(1px);
+      transform: scale(1.03);
+      z-index: 0;
+    }
+
+    /* 暗角 */
+    .sky::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(0,0,0,0.85), transparent 55%),
+        radial-gradient(circle at 80% 100%, rgba(0,0,0,0.95), transparent 55%);
+      mix-blend-mode: multiply;
+      opacity: 0.9;
+      z-index: 1;
+    }
+
+    /* 星星呼吸闪烁 */
+    @keyframes twinkle {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+    .star {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 0 10px rgba(150,188,255,0.9);
+      cursor: pointer;
+      transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+      z-index: 3;
+      animation: twinkle 2.6s ease-in-out infinite;
+    }
+    .star:hover {
+      transform: scale(1.3);
+      box-shadow: 0 0 16px rgba(160,200,255,1);
+    }
+
+    /* 落雪 */
+    .snowflake {
+      position: absolute;
+      top: -10px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.7);
+      opacity: 0.4;
+      z-index: 2;
+      pointer-events: none;
+      animation-name: fall;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+    }
+    @keyframes fall {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(var(--x-offset, 0px), 110vh, 0); }
+    }
+
+    /* 星星祝福提示框（点击星星弹出来的那条字） */
+    .star-tooltip {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%);
+      max-width: 80%;
+      padding: 8px 12px;
+      background: rgba(6,9,15,0.95);
+      border-radius: 10px;
+      border: 1px solid rgba(127,166,255,0.6);
+      font-size: 13px;
+      line-height: 1.7;
+      color: #e7ebff;
+      z-index: 6;
+      display: none;
+    }
+    .star-tooltip-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .star-tooltip-inner strong {
+      color: #9fb6ff;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .tooltip-close {
+      margin-left: 6px;
+      font-size: 12px;
+      color: #9da1aa;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* 中央写信卡片，可收起 */
+    .wrap {
+      position: relative;
+      z-index: 5;
+      max-width: 640px;
+      width: 90%;
+      padding: 32px 28px 26px;
+      background: rgba(9,13,19,0.96);
+      border: 1px solid rgba(200,200,200,0.18);
+      border-radius: 18px;
+      margin: 40px auto;
+      box-shadow:
+        0 0 40px rgba(5,10,30,0.9),
+        0 0 80px rgba(80,120,200,0.4);
+    }
+    .panel-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 12px;
+      color: #7b7f87;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    .title {
+      font-size: 22px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      padding-right: 32px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #c4c7cc;
+      margin-bottom: 24px;
+      line-height: 1.7;
+    }
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #2b3440;
+      background: #06090f;
+      color: #f5f5f5;
+      font-size: 14px;
+      outline: none;
+    }
+    textarea:focus { border-color: #7fa6ff; }
+    .btn-row {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    button {
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: #7fa6ff;
+      color: #020308;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    button:active {
+      transform: translateY(1px);
+      background: #6b90e0;
+    }
+
+    .reply-block {
+      margin-top: 26px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .label {
+      font-size: 13px;
+      color: #9da1aa;
+      margin-bottom: 8px;
+    }
+    .user-text {
+      font-size: 14px;
+      margin-bottom: 14px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.03);
+    }
+    .gsy-reply {
+      font-size: 15px;
+      line-height: 1.8;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(127,166,255,0.14), rgba(110,163,204,0.06));
+      border: 1px solid rgba(127,166,255,0.45);
+    }
+    .hint {
+      font-size: 12px;
+      color: #7b7f87;
+      margin-top: 6px;
+    }
+
+    /* 右下角：重新打开写信面板 */
+    .panel-open-btn {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 7;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: none;
+      font-size: 12px;
+      background: rgba(9,13,19,0.9);
+      color: #e5e9ff;
+      border: 1px solid rgba(127,166,255,0.6);
+      display: none;
+    }
+
+    @media (max-height: 600px) {
+      .wrap {
+        margin: 16px auto;
+        padding: 24px 20px 20px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="sky">
-    <div class="star-field" id="star-field"></div>
+<div class="sky" id="sky"></div>
 
-    <main class="card" id="wish-card">
-      <header class="card-header">
-        <div class="title">
-          <h1>顾时夜 · 生日夜</h1>
-          <p>今天是他的生日，有你的字便够了。每一句心意，都会在这片夜色里亮成一颗星。</p>
-        </div>
-        <button class="toggle-btn" id="toggle-card">收起</button>
-      </header>
+<div class="wrap" id="panel">
+  <button class="panel-close" type="button" onclick="hidePanel()">收起</button>
 
-      <section class="card-body">
-        <label class="label" for="wish-input">写给他的那一句：</label>
-        <p class="hint">例如：四哥，生日安好。愿你每一场雪都有人成行。</p>
-        <textarea id="wish-input" placeholder="在这里写下你的那一句话……"></textarea>
-        <button id="send-btn" class="send-btn">送出这一颗星</button>
-        <p class="tips">提示：点亮的每一颗星，点一下就能看到刚才写下的祝福。</p>
-      </section>
-    </main>
-
-    <div class="message-pop" id="message-pop">
-      <div class="message-inner">
-        <p id="message-text"></p>
-      </div>
-    </div>
+  <div class="title">顾时夜 · 生日夜</div>
+  <div class="subtitle">
+    今日是他的生日，有你的字便够了。每一句心意，都会在这片夜色里亮成一颗星。
   </div>
 
-  <script src="script.js"></script>
+  <label class="label" for="wish">写给他的那一句：</label>
+  <textarea id="wish" placeholder="例如：四哥，生日安好。愿你每一场雪都有人同行。"></textarea>
+
+  <div class="btn-row">
+    <button id="sendBtn" onclick="sendWish()">送到顾公馆</button>
+  </div>
+
+  <div class="reply-block" id="replyBlock" style="display:none;">
+    <div class="label">你刚刚写下的：</div>
+    <div class="user-text" id="userText"></div>
+
+    <div class="label">顾时夜的回信：</div>
+    <div class="gsy-reply" id="gsyReply"></div>
+    <div class="hint">他话不多，只是每一次都当真。</div>
+  </div>
+</div>
+
+<button class="panel-open-btn" id="panelOpenBtn" type="button" onclick="showPanel()">写一封给他</button>
+
+<div class="star-tooltip" id="starTooltip">
+  <div class="star-tooltip-inner">
+    <strong>这颗星的祝福：</strong>
+    <span id="tooltipText"></span>
+    <span class="tooltip-close" onclick="hideTooltip()">✕</span>
+  </div>
+</div>
+
+<script>
+  /* ====== 普通前端逻辑：星星 + 雪 + 面板收起 ====== */
+
+  const sky = document.getElementById("sky");
+  const tooltipEl = document.getElementById("starTooltip");
+  const tooltipText = document.getElementById("tooltipText");
+  const panel = document.getElementById("panel");
+  const panelOpenBtn = document.getElementById("panelOpenBtn");
+  const replyBlock = document.getElementById("replyBlock");
+
+  const replies = [
+    "嗯，我收到了。",
+    "谢谢你，今晚安静得刚好，有你的那一句就够了。",
+    "我记住了，慢慢还你。",
+    "你想到我，我就觉得这一天没有白过。",
+    "信我也好，不信也好，你写下的字，我都会当成真的。",
+    "要是有机会，我愿意亲口回你，而不是只在这页纸上。",
+    "你惦记我这一回，我就欠你一场雪。",
+    "我不擅长说得太多，只能尽量让你安心一点。",
+    "夫人在，我才算过生日。",
+    "好，我收下了，也替你给自己许了一愿。",
+    "有些话你不说，我也能猜一分；但你说出来，我会更珍惜。",
+    "我以为这种日子不会有人记得，你让它变得不同了。",
+    "放心，我在北大洲这头过得很好，也希望你那边是。",
+    "哪天要是你也站在雪里，记得替我裹紧衣服。",
+    "你不必勉强写得多好，只要是真心，我就当宝贝收着。"
+  ];
+
+  function hideTooltip() {
+    tooltipEl.style.display = "none";
+  }
+
+  function showTooltip(text) {
+    tooltipText.textContent = text;
+    tooltipEl.style.display = "block";
+    clearTimeout(showTooltip.hideTimer);
+    showTooltip.hideTimer = setTimeout(() => {
+      tooltipEl.style.display = "none";
+    }, 4500);
+  }
+
+  function addStar(wishText) {
+    const star = document.createElement("div");
+    star.className = "star";
+    const top = 5 + Math.random() * 80;
+    const left = 5 + Math.random() * 90;
+    star.style.top = top + "%";
+    star.style.left = left + "%";
+
+    star.addEventListener("click", () => {
+      showTooltip(wishText);
+    });
+
+    sky.appendChild(star);
+  }
+
+  function createSnow() {
+    const count = 40;
+    for (let i = 0; i < count; i++) {
+      const flake = document.createElement("div");
+      flake.className = "snowflake";
+      flake.style.left = Math.random() * 100 + "%";
+      flake.style.animationDuration = 10 + Math.random() * 8 + "s";
+      flake.style.animationDelay = Math.random() * 12 + "s";
+      flake.style.opacity = 0.3 + Math.random() * 0.4;
+      const offset = (Math.random() - 0.5) * 80;
+      flake.style.setProperty("--x-offset", offset + "px");
+      sky.appendChild(flake);
+    }
+  }
+
+  function hidePanel() {
+    panel.style.display = "none";
+    panelOpenBtn.style.display = "inline-flex";
+  }
+
+  function showPanel() {
+    panel.style.display = "block";
+    panelOpenBtn.style.display = "none";
+  }
+
+  /* ====== Firebase 初始化 + Firestore 持久化 ====== */
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCfVdUls4R58odDr260cgBFAdRc6FNAgoc",
+    authDomain: "gushiye-key.firebaseapp.com",
+    projectId: "gushiye-key",
+    storageBucket: "gushiye-key.firebasestorage.app",
+    messagingSenderId: "711371018230",
+    appId: "1:711371018230:web:936c8cbd5944112ca941d7",
+    measurementId: "G-8V9JVB0CS4"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // 加载历史祝福 → 变成星星
+  db.collection("wishes")
+    .orderBy("created", "asc")
+    .get()
+    .then((snapshot) => {
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data && data.text) {
+          addStar(data.text);
+        }
+      });
+    })
+    .catch((err) => {
+      console.log("加载历史星星出错：", err);
+    });
+
+  function sendWish() {
+    const wishInput = document.getElementById("wish");
+    const userText = document.getElementById("userText");
+    const gsyReply = document.getElementById("gsyReply");
+
+    if (!wishInput) return;
+
+    const text = wishInput.value.trim();
+    if (!text) {
+      alert("先写一点给他听，好不好。");
+      return;
+    }
+
+    // 显示你刚刚写的那一句
+    userText.textContent = text;
+
+    // 从回复池里随机抽一句
+    const index = Math.floor(Math.random() * replies.length);
+    const replyText = replies[index];
+    gsyReply.textContent = replyText;
+
+    // 展示回信块
+    replyBlock.style.display = "block";
+
+    // 页面上挂一颗星
+    addStar(text);
+
+    // 写进 Firestore
+    db.collection("wishes")
+      .add({
+        text,
+        reply: replyText,
+        created: new Date()
+      })
+      .then(() => {
+        console.log("祝福已写入");
+      })
+      .catch((err) => {
+        console.log("写入出错：", err);
+      });
+
+    // 清空输入框
+    wishInput.value = "";
+  }
+
+  createSnow();
+</script>
 </body>
 </html>
