@@ -1,0 +1,242 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #020309;
+  color: #f5f5f5;
+  overflow: hidden;
+}
+
+/* 整个夜空背景层 */
+.sky {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(0,0,0,0.55), transparent 55%),
+    radial-gradient(circle at 80% 100%, rgba(0,0,0,0.85), transparent 55%),
+    linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.4)),
+    url("bg.jpg") center center / cover no-repeat;
+}
+
+/* 星空星点容器 */
+.star-field {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* 星星本体 */
+.star {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(255,255,255,1);
+  box-shadow:
+    0 0 12px rgba(160,190,255,1),
+    0 0 22px rgba(130,160,255,0.85);
+  cursor: pointer;
+  animation: twinkle 2.4s ease-in-out infinite;
+  z-index: 2;
+}
+
+.star:hover {
+  transform: scale(1.35);
+  box-shadow:
+    0 0 18px rgba(180,210,255,1),
+    0 0 35px rgba(130,160,255,1);
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* 中间写祝福的卡片 */
+.card {
+  position: relative;
+  z-index: 3;
+  max-width: 720px;
+  margin: 6vh auto 0;
+  padding: 24px 24px 20px;
+  background: radial-gradient(circle at 0 0, rgba(255,255,255,0.06), transparent 55%),
+              radial-gradient(circle at 100% 100%, rgba(40,90,190,0.25), transparent 60%),
+              rgba(4,8,24,0.92);
+  border-radius: 24px;
+  box-shadow:
+    0 18px 60px rgba(0,0,0,0.75),
+    0 0 0 1px rgba(150,180,255,0.18);
+  backdrop-filter: blur(10px);
+}
+
+/* 头部 */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.card-header h1 {
+  font-size: 26px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.card-header p {
+  font-size: 13px;
+  color: #c6c9e8;
+  line-height: 1.6;
+}
+
+/* 收起按钮 */
+.toggle-btn {
+  border: none;
+  background: rgba(36,56,120,0.9);
+  color: #f5f6ff;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-btn:hover {
+  background: rgba(70,98,180,1);
+}
+
+/* 内容区 */
+.card-body {
+  margin-top: 6px;
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.hint {
+  font-size: 12px;
+  color: #9fa4d2;
+  margin-bottom: 10px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  max-height: 210px;
+  resize: vertical;
+  border-radius: 14px;
+  border: 1px solid rgba(140,160,230,0.55);
+  background: rgba(5,7,20,0.9);
+  color: #f5f5ff;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+}
+
+textarea::placeholder {
+  color: rgba(150,160,210,0.7);
+}
+
+textarea:focus {
+  border-color: rgba(170,190,255,0.95);
+  box-shadow: 0 0 0 1px rgba(140,160,230,0.75);
+}
+
+/* 按钮与提示 */
+.send-btn {
+  margin-top: 12px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #3b7bff, #7e9dff);
+  color: #fdfdff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.send-btn:hover {
+  filter: brightness(1.07);
+}
+
+.tips {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #99a0d5;
+}
+
+/* 卡片收起状态 */
+.card.collapsed {
+  padding-bottom: 10px;
+}
+
+.card.collapsed .card-body {
+  display: none;
+}
+
+/* 星星信息浮窗 */
+.message-pop {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.message-pop.show {
+  opacity: 1;
+}
+
+.message-inner {
+  max-width: 78vw;
+  background: rgba(6,10,28,0.95);
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(170,190,255,0.85);
+  box-shadow: 0 0 18px rgba(20,30,80,0.9);
+}
+
+#message-text {
+  font-size: 13px;
+  color: #f5f5ff;
+}
+
+/* 小屏优化 */
+@media (max-width: 768px) {
+  .card {
+    margin: 10vh 16px 0;
+    padding: 20px 18px 16px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .toggle-btn {
+    margin-top: 6px;
+  }
+}

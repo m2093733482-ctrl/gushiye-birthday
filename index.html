@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>顾时夜 · 生日夜</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="sky">
+    <div class="star-field" id="star-field"></div>
+
+    <main class="card" id="wish-card">
+      <header class="card-header">
+        <div class="title">
+          <h1>顾时夜 · 生日夜</h1>
+          <p>今天是他的生日，有你的字便够了。每一句心意，都会在这片夜色里亮成一颗星。</p>
+        </div>
+        <button class="toggle-btn" id="toggle-card">收起</button>
+      </header>
+
+      <section class="card-body">
+        <label class="label" for="wish-input">写给他的那一句：</label>
+        <p class="hint">例如：四哥，生日安好。愿你每一场雪都有人成行。</p>
+        <textarea id="wish-input" placeholder="在这里写下你的那一句话……"></textarea>
+        <button id="send-btn" class="send-btn">送出这一颗星</button>
+        <p class="tips">提示：点亮的每一颗星，点一下就能看到刚才写下的祝福。</p>
+      </section>
+    </main>
+
+    <div class="message-pop" id="message-pop">
+      <div class="message-inner">
+        <p id="message-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
