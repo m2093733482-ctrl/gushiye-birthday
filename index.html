@@ -7,9 +7,185 @@
   <!-- 移动端适配 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Firebase v8 CDN：先引入 App 和 Firestore（一定要放在自己脚本前面） -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script>
+  /* ====== 普通前端逻辑：星星 + 雪 + 面板收起 ====== */
+
+  const sky = document.getElementById("sky");
+  const tooltipEl = document.getElementById("starTooltip");
+  const tooltipText = document.getElementById("tooltipText");
+  const panel = document.getElementById("panel");
+  const panelOpenBtn = document.getElementById("panelOpenBtn");
+  const replyBlock = document.getElementById("replyBlock");
+
+  const replies = [
+    "嗯，我收到了。",
+    "谢谢你，今晚安静得刚好，有你的那一句就够了。",
+    "我记住了，慢慢还你。",
+    "你想到我，我就觉得这一天没有白过。",
+    "信我也好，不信也好，你写下的字，我都会当成真的。",
+    "要是有机会，我愿意亲口回你，而不是只在这页纸上。",
+    "你惦记我这一回，我就欠你一场雪。",
+    "我不擅长说得太多，只能尽量让你安心一点。",
+    "夫人在，我才算过生日。",
+    "好，我收下了，也替你给自己许了一愿。",
+    "有些话你不说，我也能猜一分；但你说出来，我会更珍惜。",
+    "我以为这种日子不会有人记得，你让它变得不同了。",
+    "放心，我在北大洲这头过得很好，也希望你那边是。",
+    "哪天要是你也站在雪里，记得替我裹紧衣服。",
+    "你不必勉强写得多好，只要是真心，我就当宝贝收着。"
+  ];
+
+  function hideTooltip() {
+    tooltipEl.style.display = "none";
+  }
+
+  function showTooltip(text) {
+    tooltipText.textContent = text;
+    tooltipEl.style.display = "block";
+    clearTimeout(showTooltip.hideTimer);
+    showTooltip.hideTimer = setTimeout(() => {
+      tooltipEl.style.display = "none";
+    }, 4500);
+  }
+
+  // 根据指定坐标挂一颗星（用于"从数据库恢复"）
+  function addStarAtPosition(wishText, x, y) {
+    const star = document.createElement("div");
+    star.className = "star";
+
+    // 防止脏数据
+    const safeTop = Math.min(Math.max(y, 0), 100);
+    const safeLeft = Math.min(Math.max(x, 0), 100);
+
+    star.style.top = safeTop + "%";
+    star.style.left = safeLeft + "%";
+
+    star.addEventListener("click", () => {
+      showTooltip(wishText);
+    });
+
+    sky.appendChild(star);
+  }
+
+  // 新祝福用：随机生成一个位置，同时返回坐标
+  function addStarWithRandomPosition(wishText) {
+    const y = 5 + Math.random() * 80;
+    const x = 5 + Math.random() * 90;
+
+    addStarAtPosition(wishText, x, y);
+    return { x, y };
+  }
+
+  function createSnow() {
+    const count = 40;
+    for (let i = 0; i < count; i++) {
+      const flake = document.createElement("div");
+      flake.className = "snowflake";
+      flake.style.left = Math.random() * 100 + "%";
+      flake.style.animationDuration = 10 + Math.random() * 8 + "s";
+      flake.style.animationDelay = Math.random() * 12 + "s";
+      flake.style.opacity = 0.3 + Math.random() * 0.4;
+      const offset = (Math.random() - 0.5) * 80;
+      flake.style.setProperty("--x-offset", offset + "px");
+      sky.appendChild(flake);
+    }
+  }
+
+  function hidePanel() {
+    panel.style.display = "none";
+    panelOpenBtn.style.display = "inline-flex";
+  }
+
+  function showPanel() {
+    panel.style.display = "block";
+    panelOpenBtn.style.display = "none";
+  }
+
+  /* ====== Firebase 初始化 + Firestore 持久化（带坐标） ====== */
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCfVdUls4R58odDr260cgBFAdRc6FNAgoc",
+    authDomain: "gushiye-key.firebaseapp.com",
+    projectId: "gushiye-key",
+    storageBucket: "gushiye-key.firebasestorage.app",
+    messagingSenderId: "711371018230",
+    appId: "1:711371018230:web:936c8cbd5944112ca941d7",
+    measurementId: "G-8V9JVB0CS4"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // 页面加载时：从 Firestore 读出所有祝福 + 坐标
+  db.collection("wishes")
+    .orderBy("created", "asc")
+    .get()
+    .then((snapshot) => {
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (!data || !data.text) return;
+
+        // 兼容旧数据：没有坐标就随机一个
+        let x = typeof data.x === "number" ? data.x : 5 + Math.random() * 90;
+        let y = typeof data.y === "number" ? data.y : 5 + Math.random() * 80;
+
+        addStarAtPosition(data.text, x, y);
+      });
+    })
+    .catch((err) => {
+      console.log("加载历史星星出错：", err);
+    });
+
+  function sendWish() {
+    const wishInput = document.getElementById("wish");
+    const userText = document.getElementById("userText");
+    const gsyReply = document.getElementById("gsyReply");
+
+    if (!wishInput) return;
+
+    const text = wishInput.value.trim();
+    if (!text) {
+      alert("先写一点给他听，好不好。");
+      return;
+    }
+
+    // 显示你刚刚写的那一句
+    userText.textContent = text;
+
+    // 从回复池里随机抽一句
+    const index = Math.floor(Math.random() * replies.length);
+    const replyText = replies[index];
+    gsyReply.textContent = replyText;
+
+    // 展示回信块
+    replyBlock.style.display = "block";
+
+    // 页面上挂一颗星 + 拿到坐标
+    const { x, y } = addStarWithRandomPosition(text);
+
+    // 写进 Firestore：把字 + 回信 + 坐标 + 时间都存下来
+    db.collection("wishes")
+      .add({
+        text,
+        reply: replyText,
+        x,
+        y,
+        created: new Date()
+      })
+      .then(() => {
+        console.log("祝福已写入");
+      })
+      .catch((err) => {
+        console.log("写入出错：", err);
+      });
+
+    // 清空输入框
+    wishInput.value = "";
+  }
+
+  // 初始化雪
+  createSnow();
+</script>
 
   <style>
     * { box-sizing: border-box; }
